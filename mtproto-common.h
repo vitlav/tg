@@ -78,6 +78,7 @@
 #define CODE_input_peer_notify_settings_old 0x3cf4b1be
 #define CODE_peer_notify_settings_old 0xddbcd4a5
 #define CODE_user_profile_photo_old 0x990d1493
+#define CODE_config_old 0x232d5905
 
 #define CODE_msg_new_detailed_info 0x809db6df
 
@@ -102,118 +103,6 @@ struct encrypted_message {
   int seq_no;
   int msg_len;   // divisible by 4
   int message[MAX_MESSAGE_INTS];
-};
-
-struct worker_descr {
-  int addr;
-  int port;
-  int pid;
-  int start_time;
-  int id;
-};
-
-struct rpc_ready_packet {
-  int len;
-  int seq_num;
-  int type;
-  struct worker_descr worker;
-  int worker_ready_cnt; 
-  int crc32;
-};
-
-
-struct front_descr {
-  int addr;
-  int port;
-  int pid;
-  int start_time;
-  int id;
-};
-
-struct rpc_front_packet {
-  int len;
-  int seq_num;
-  int type;
-  struct front_descr front;
-  long long hash_mult;
-  int rem, mod;
-  int crc32;
-};
-
-struct middle_descr {
-  int addr;
-  int port;
-  int pid;
-  int start_time;
-  int id;
-};
-
-struct rpc_front_ack {
-  int len;
-  int seq_num;
-  int type;
-  struct middle_descr middle;
-  int crc32;
-};
-
-struct rpc_front_err {
-  int len;
-  int seq_num;
-  int type;
-  int errcode;
-  struct middle_descr middle;
-  long long hash_mult;
-  int rem, mod;
-  int crc32;
-};
-
-struct rpc_proxy_req {
-  int len;
-  int seq_num;
-  int type;
-  int flags;
-  long long ext_conn_id;
-  unsigned char remote_ipv6[16];
-  int remote_port;
-  unsigned char our_ipv6[16];
-  int our_port;
-  int data[];
-};
-
-#define	PROXY_HDR(__x)	((struct rpc_proxy_req *)((__x) - offsetof(struct rpc_proxy_req, data)))
-
-struct rpc_proxy_ans {
-  int len;
-  int seq_num;
-  int type;
-  int flags;	// +16 = small error packet, +8 = flush immediately
-  long long ext_conn_id;
-  int data[];
-};
-
-struct rpc_close_conn {
-  int len;
-  int seq_num;
-  int type;
-  long long ext_conn_id;
-  int crc32;
-};
-
-struct rpc_close_ext {
-  int len;
-  int seq_num;
-  int type;
-  long long ext_conn_id;
-  int crc32;
-};
-
-struct rpc_simple_ack {
-  int len;
-  int seq_num;
-  int type;
-  long long ext_conn_id;
-  int confirm_key;
-  int crc32;
 };
 
 #pragma pack(pop)

@@ -264,7 +264,7 @@ struct document {
 };
 
 struct message_action {
-  int type;
+  unsigned type;
   union {
     struct {
       char *title;
@@ -279,7 +279,7 @@ struct message_action {
 };
 
 struct message_media {
-  int type;
+  unsigned type;
   union {
     struct photo photo;
     struct video video;
@@ -297,8 +297,10 @@ struct message_media {
     struct encr_audio encr_audio;
     struct encr_document encr_document;
     struct encr_file encr_file;
-    void *data;
-    int data_size;
+    struct {
+      void *data;
+      int data_size;
+    };
   };
 };
 

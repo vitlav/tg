@@ -51,6 +51,7 @@ char *default_prompt = "> ";
 
 int unread_messages;
 int msg_num_mode;
+int alert_sound;
 
 int safe_quit;
 
@@ -322,6 +323,7 @@ char *commands[] = {
   "chat_with_peer",
   "delete_msg",
   "restore_msg",
+  "create_group_chat",
   0 };
 
 int commands_flags[] = {
@@ -371,6 +373,7 @@ int commands_flags[] = {
   07,
   072,
   07,
+  072,
   07
 };
 
@@ -560,7 +563,8 @@ void work_modifier (const char *s, int l) {
 
 
 void interpreter_chat_mode (char *line) {
-  if (!strncmp (line, "/exit", 5) || !strncmp (line, "/quit", 5)) {
+  if (line == NULL || /* EOF received */
+          !strncmp (line, "/exit", 5) || !strncmp (line, "/quit", 5)) {
     in_chat_mode = 0;
     update_prompt ();
     return;
@@ -576,7 +580,9 @@ void interpreter_chat_mode (char *line) {
     do_mark_read (chat_mode_id);
     return;
   }
-  do_send_message (chat_mode_id, line, strlen (line));
+  if (strlen (line)>0) {
+    do_send_message (chat_mode_id, line, strlen (line));
+  }
 }
 
 void interpreter (char *line UU) {
@@ -716,9 +722,9 @@ void interpreter (char *line UU) {
       RET;
     }
     struct message *M = message_get (num);
-    if (M && !M->service && M->media.type == (int)CODE_message_media_photo) {
+    if (M && !M->service && M->media.type == CODE_message_media_photo) {
       do_load_photo (&M->media.photo, 1);
-    } else if (M && !M->service && M->media.type == (int)CODE_decrypted_message_media_photo) {
+    } else if (M && !M->service && M->media.type == CODE_decrypted_message_media_photo) {
       do_load_encr_video (&M->media.encr_video, 1); // this is not a bug. 
     } else {
       printf ("Bad msg id\n");
@@ -731,9 +737,9 @@ void interpreter (char *line UU) {
       RET;
     }
     struct message *M = message_get (num);
-    if (M && !M->service && M->media.type == (int)CODE_message_media_photo) {
+    if (M && !M->service && M->media.type == CODE_message_media_photo) {
       do_load_photo (&M->media.photo, 2);
-    } else if (M && !M->service && M->media.type == (int)CODE_decrypted_message_media_photo) {
+    } else if (M && !M->service && M->media.type == CODE_decrypted_message_media_photo) {
       do_load_encr_video (&M->media.encr_video, 2); // this is not a bug. 
     } else {
       printf ("Bad msg id\n");
@@ -746,7 +752,7 @@ void interpreter (char *line UU) {
       RET;
     }
     struct message *M = message_get (num);
-    if (M && !M->service && M->media.type == (int)CODE_message_media_video) {
+    if (M && !M->service && M->media.type == CODE_message_media_video) {
       do_load_video_thumb (&M->media.video, 1);
     } else {
       printf ("Bad msg id\n");
@@ -759,7 +765,7 @@ void interpreter (char *line UU) {
       RET;
     }
     struct message *M = message_get (num);
-    if (M && !M->service && M->media.type == (int)CODE_message_media_video) {
+    if (M && !M->service && M->media.type == CODE_message_media_video) {
       do_load_video_thumb (&M->media.video, 2);
     } else {
       printf ("Bad msg id\n");
@@ -772,9 +778,9 @@ void interpreter (char *line UU) {
       RET;
     }
     struct message *M = message_get (num);
-    if (M && !M->service && M->media.type == (int)CODE_message_media_video) {
+    if (M && !M->service && M->media.type == CODE_message_media_video) {
       do_load_video (&M->media.video, 1);
-    } else if (M && !M->service && M->media.type == (int)CODE_decrypted_message_media_video) {
+    } else if (M && !M->service && M->media.type == CODE_decrypted_message_media_video) {
       do_load_encr_video (&M->media.encr_video, 1);
     } else {
       printf ("Bad msg id\n");
@@ -787,9 +793,9 @@ void interpreter (char *line UU) {
       RET;
     }
     struct message *M = message_get (num);
-    if (M && !M->service && M->media.type == (int)CODE_message_media_video) {
+    if (M && !M->service && M->media.type == CODE_message_media_video) {
       do_load_video (&M->media.video, 2);
-    } else if (M && !M->service && M->media.type == (int)CODE_decrypted_message_media_video) {
+    } else if (M && !M->service && M->media.type == CODE_decrypted_message_media_video) {
       do_load_encr_video (&M->media.encr_video, 2);
     } else {
       printf ("Bad msg id\n");
@@ -876,15 +882,16 @@ void interpreter (char *line UU) {
       "chat_info <chat> - prints info about chat\n"
       "user_info <user> - prints info about user\n"
       "fwd <user> <msg-seqno> - forward message to user. You can see message numbers starting client with -N\n"
-      "rename_chat <char> <new-name>\n"
-      "load_photo/load_video/load_video_thumb <msg-seqno> - loads photo/video to download dir\n"
-      "view_photo/view_video/view_video_thumb <msg-seqno> - loads photo/video to download dir and starts system default viewer\n"
+      "rename_chat <chat> <new-name>\n"
+      "load_photo/load_video/load_video_thumb <msg-seqno> - loads photo/video to download dir. You can see message numbers starting client with -N\n"
+      "view_photo/view_video/view_video_thumb <msg-seqno> - loads photo/video to download dir and starts system default viewer. You can see message numbers starting client with -N\n"
       "show_license - prints contents of GPLv2\n"
       "search <peer> pattern - searches pattern in messages with peer\n"
       "global_search pattern - searches pattern in all messages\n"
       "mark_read <peer> - mark read all received messages with peer\n"
       "add_contact <phone-number> <first-name> <last-name> - tries to add contact to contact-list by phone\n"
       "create_secret_chat <user> - creates secret chat with this user\n"
+      "create_group_chat <user> <chat-topic> - creates group chat with this user, add more users with chat_add_user <user>\n"
       "rename_contact <user> <first-name> <last-name> - tries to rename contact. If you have another device it will be a fight\n"
       "suggested_contacts - print info about contacts, you have max common friends\n"
       "visualize_key <secret_chat> - prints visualization of encryption key. You should compare it to your partner's one\n"
@@ -895,6 +902,7 @@ void interpreter (char *line UU) {
       "\t\tLevel 2: prints line, when somebody is typing in chat\n"
       "\t\tLevel 3: prints line, when somebody changes online status\n"
       "\tmsg_num - enables/disables numeration of messages\n"
+      "\talert - enables/disables alert sound notifications\n"
       "chat_with_peer <peer> - starts chat with this peer. Every command after is message to this peer. Type /exit or /quit to end this mode\n"
       );
     pop_color ();
@@ -935,6 +943,15 @@ void interpreter (char *line UU) {
   } else if (IS_WORD ("create_secret_chat")) {
     GET_PEER;    
     do_create_secret_chat (id);
+  } else if (IS_WORD ("create_group_chat")) {
+    GET_PEER;
+    int t;
+    char *s = next_token (&t);
+    if (!s) {
+      printf ("Empty chat topic\n");
+      RET;
+    }    
+    do_create_group_chat (id, s);  
   } else if (IS_WORD ("suggested_contacts")) {
     do_get_suggested ();
   } else if (IS_WORD ("status_online")) {
@@ -974,9 +991,9 @@ void interpreter (char *line UU) {
       RET;
     }
     struct message *M = message_get (num);
-    if (M && !M->service && M->media.type == (int)CODE_message_media_audio) {
+    if (M && !M->service && M->media.type == CODE_message_media_audio) {
       do_load_audio (&M->media.video, 1);
-    } else if (M && !M->service && M->media.type == (int)CODE_decrypted_message_media_audio) {
+    } else if (M && !M->service && M->media.type == CODE_decrypted_message_media_audio) {
       do_load_encr_video (&M->media.encr_video, 1);
     } else {
       printf ("Bad msg id\n");
@@ -989,9 +1006,9 @@ void interpreter (char *line UU) {
       RET;
     }
     struct message *M = message_get (num);
-    if (M && !M->service && M->media.type == (int)CODE_message_media_audio) {
+    if (M && !M->service && M->media.type == CODE_message_media_audio) {
       do_load_audio (&M->media.video, 2);
-    } else if (M && !M->service && M->media.type == (int)CODE_decrypted_message_media_audio) {
+    } else if (M && !M->service && M->media.type == CODE_decrypted_message_media_audio) {
       do_load_encr_video (&M->media.encr_video, 2);
     } else {
       printf ("Bad msg id\n");
@@ -1030,9 +1047,9 @@ void interpreter (char *line UU) {
       RET;
     }
     struct message *M = message_get (num);
-    if (M && !M->service && M->media.type == (int)CODE_message_media_document) {
+    if (M && !M->service && M->media.type == CODE_message_media_document) {
       do_load_document (&M->media.document, 1);
-    } else if (M && !M->service && M->media.type == (int)CODE_decrypted_message_media_document) {
+    } else if (M && !M->service && M->media.type == CODE_decrypted_message_media_document) {
       do_load_encr_video (&M->media.encr_video, 1);
     } else {
       printf ("Bad msg id\n");
@@ -1045,9 +1062,9 @@ void interpreter (char *line UU) {
       RET;
     }
     struct message *M = message_get (num);
-    if (M && !M->service && M->media.type == (int)CODE_message_media_document) {
+    if (M && !M->service && M->media.type == CODE_message_media_document) {
       do_load_document (&M->media.document, 2);
-    } else if (M && !M->service && M->media.type == (int)CODE_decrypted_message_media_document) {
+    } else if (M && !M->service && M->media.type == CODE_decrypted_message_media_document) {
       do_load_encr_video (&M->media.encr_video, 2);
     } else {
       printf ("Bad msg id\n");
@@ -1066,6 +1083,8 @@ void interpreter (char *line UU) {
       log_level = num;
     } else if (IS_WORD ("msg_num")) {
       msg_num_mode = num;
+    } else if (IS_WORD ("alert")) {
+      alert_sound = num;
     }
   } else if (IS_WORD ("chat_with_peer")) {
     GET_PEER;
@@ -1336,7 +1355,7 @@ void print_encr_chat_name_full (peer_id_t id, peer_t *C) {
 
 static char *monthes[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 void print_date (long t) {
-  struct tm *tm = localtime (&t);
+  struct tm *tm = localtime ((void *)&t);
   if (time (0) - t < 12 * 60 * 60) {
     printf ("[%02d:%02d] ", tm->tm_hour, tm->tm_min);
   } else {
@@ -1345,7 +1364,7 @@ void print_date (long t) {
 }
 
 void print_date_full (long t) {
-  struct tm *tm = localtime (&t);
+  struct tm *tm = localtime ((void *)&t);
   printf ("[%04d/%02d/%02d %02d:%02d:%02d]", tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
 }
 
@@ -1468,6 +1487,9 @@ void print_message (struct message *M) {
       } else {
         printf (" »»» ");
       }
+      if (alert_sound) {
+        play_sound();
+      }
     }
   } else if (get_peer_type (M->to_id) == PEER_ENCR_CHAT) {
     peer_t *P = user_chat_get (M->to_id);
@@ -1501,8 +1523,10 @@ void print_message (struct message *M) {
       } else {
         printf (" »»» ");
       }
+      if (alert_sound) {
+        play_sound();
+      }
     }
-    
   } else {
     assert (get_peer_type (M->to_id) == PEER_CHAT);
     push_color (COLOR_MAGENTA);
@@ -1543,9 +1567,13 @@ void print_message (struct message *M) {
   print_end();
 }
 
+void play_sound (void) {
+  printf ("\a");
+}
+
 void set_interface_callbacks (void) {
   readline_active = 1;
   rl_callback_handler_install (get_default_prompt (), interpreter);
-  rl_attempted_completion_function = (CPPFunction *) complete_text;
+  rl_attempted_completion_function = (void *) complete_text;
   rl_completion_entry_function = (void *)complete_none;
 }
